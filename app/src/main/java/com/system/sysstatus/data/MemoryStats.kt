@@ -24,8 +24,23 @@ class MemoryCollector(context: Context) {
         context.applicationContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
 
     fun read(): MemoryStats {
-        val fields = readMeminfo()
-        if (fields.isEmpty() || !fields.containsKey("MemTotal")) return readFallback()
+        val batch = ReadBatch("Memory")
+        val stats = collect(batch)
+        batch.commit()
+        return stats
+    }
+
+    private fun collect(batch: ReadBatch): MemoryStats {
+        val fields = batch.trace(
+            call = "File(/proc/meminfo) read + parse",
+            fallback = emptyMap<String, Long>(),
+            noData = { !it.containsKey("MemTotal") },
+            show = { f ->
+                "MemTotal=${f["MemTotal"]} MemAvailable=${f["MemAvailable"]} Cached=${f["Cached"]} " +
+                    "Buffers=${f["Buffers"]} SwapTotal=${f["SwapTotal"]} SwapFree=${f["SwapFree"]} (kB)"
+            }
+        ) { readMeminfo() }
+        if (fields.isEmpty() || !fields.containsKey("MemTotal")) return readFallback(batch)
 
         return MemoryStats(
             totalMb = kbToMb(fields["MemTotal"]),
@@ -38,29 +53,30 @@ class MemoryCollector(context: Context) {
     }
 
     // Parses lines such as "MemTotal:        7890000 kB"
+    // Errors propagate to ReadBatch.trace, which logs them and returns an empty map
     private fun readMeminfo(): Map<String, Long> {
-        return try {
-            val result = HashMap<String, Long>()
-            File("/proc/meminfo").bufferedReader().useLines { lines ->
-                for (line in lines) {
-                    val colon = line.indexOf(':')
-                    if (colon <= 0) continue
-                    val key = line.substring(0, colon)
-                    val number = line.substring(colon + 1).trim().substringBefore(' ').toLongOrNull()
-                        ?: continue
-                    result[key] = number
-                }
+        val result = HashMap<String, Long>()
+        File("/proc/meminfo").bufferedReader().useLines { lines ->
+            for (line in lines) {
+                val colon = line.indexOf(':')
+                if (colon <= 0) continue
+                val key = line.substring(0, colon)
+                val number = line.substring(colon + 1).trim().substringBefore(' ').toLongOrNull()
+                    ?: continue
+                result[key] = number
             }
-            result
-        } catch (e: Exception) {
-            emptyMap()
         }
+        return result
     }
 
     // Used only when /proc/meminfo is not readable on a device
-    private fun readFallback(): MemoryStats {
+    private fun readFallback(batch: ReadBatch): MemoryStats {
         val info = ActivityManager.MemoryInfo()
-        activityManager.getMemoryInfo(info)
+        batch.trace(
+            call = "ActivityManager.getMemoryInfo()",
+            fallback = Unit,
+            show = { "totalMem=${info.totalMem} availMem=${info.availMem} (bytes)" }
+        ) { activityManager.getMemoryInfo(info) }
         return MemoryStats(
             totalMb = info.totalMem / MB,
             availableMb = info.availMem / MB

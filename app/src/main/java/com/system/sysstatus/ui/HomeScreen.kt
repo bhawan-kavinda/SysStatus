@@ -111,6 +111,9 @@ fun HomeScreen(state: UiState, onOpen: (Screen) -> Unit) {
             )
         }
 
+        Spacer(Modifier.height(12.dp))
+        LogEntryCard(onClick = { onOpen(Screen.Log) })
+
         Spacer(Modifier.height(16.dp))
         Text(
             "CPU, GPU, thermal and more arrive in the next steps.",
@@ -176,5 +179,38 @@ private fun BatteryCard(battery: BatteryStats, onClick: () -> Unit) {
                 color = colors.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+private fun LogEntryCard(onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(22.dp)
+
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(colors.surface)
+            .border(1.dp, colors.outlineVariant, shape)
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column {
+            Text(
+                "Data log",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.onSurface
+            )
+            Text(
+                "See every system request and its raw result",
+                fontSize = 13.sp,
+                color = colors.onSurfaceVariant
+            )
+        }
+        Text("›", fontSize = 24.sp, color = colors.onSurfaceVariant)
     }
 }

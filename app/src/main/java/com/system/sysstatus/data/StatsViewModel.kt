@@ -71,7 +71,7 @@ class StatsViewModel(app: Application) : AndroidViewModel(app) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UiState())
 
     private companion object {
-        const val INTERVAL_MS = 1_000L
+        const val INTERVAL_MS = 3_000L
         const val HISTORY_SIZE = 60
     }
 }

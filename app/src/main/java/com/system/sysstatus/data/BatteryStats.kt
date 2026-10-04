@@ -34,14 +34,28 @@ class BatteryCollector(context: Context) {
     private val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
 
     fun read(): BatteryStats {
-        val intent = appContext.registerReceiver(null, filter) ?: return BatteryStats()
+        val batch = ReadBatch("Battery")
+        val stats = collect(batch)
+        batch.commit()
+        return stats
+    }
+
+    private fun collect(batch: ReadBatch): BatteryStats {
+        val intent = batch.trace<Intent?>(
+            call = "Context.registerReceiver(ACTION_BATTERY_CHANGED)",
+            fallback = null,
+            noData = { it == null },
+            show = { describeIntent(it) }
+        ) { appContext.registerReceiver(null, filter) } ?: return BatteryStats()
 
         val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
         val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
         val percent = if (level >= 0 && scale > 0) {
             level * 100 / scale
         } else {
-            manager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY).coerceIn(0, 100)
+            batch.trace("BatteryManager.getIntProperty(BATTERY_PROPERTY_CAPACITY)", 0) {
+                manager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+            }.coerceIn(0, 100)
         }
 
         val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, BatteryManager.BATTERY_STATUS_UNKNOWN)
@@ -54,7 +68,12 @@ class BatteryCollector(context: Context) {
         // Reported in tenths of a degree Celsius
         val tempC = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) / 10f
 
-        val rawCurrent = manager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW)
+        val rawCurrent = batch.trace(
+            call = "BatteryManager.getIntProperty(BATTERY_PROPERTY_CURRENT_NOW)",
+            fallback = Int.MIN_VALUE,
+            noData = { it == Int.MIN_VALUE || it == 0 },
+            show = { if (it == Int.MIN_VALUE) "Int.MIN_VALUE (not supported)" else "$it (raw, vendor unit)" }
+        ) { manager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW) }
         val currentAvailable = rawCurrent != Int.MIN_VALUE && rawCurrent != 0
         val magnitudeMa = if (currentAvailable) normalizeToMa(abs(rawCurrent)) else 0
 
@@ -78,9 +97,9 @@ class BatteryCollector(context: Context) {
             technology = intent.getStringExtra(BatteryManager.EXTRA_TECHNOLOGY).orEmpty(),
             plugged = pluggedLabel(intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)),
             cycleCount = readCycleCount(intent),
-            stateOfHealthPercent = readStateOfHealth(),
-            chargeCounterMah = readChargeCounterMah(),
-            chargeTimeRemainingMin = readChargeTimeRemainingMin(charging)
+            stateOfHealthPercent = readStateOfHealth(batch),
+            chargeCounterMah = readChargeCounterMah(batch),
+            chargeTimeRemainingMin = readChargeTimeRemainingMin(charging, batch)
         )
     }
 
@@ -92,24 +111,53 @@ class BatteryCollector(context: Context) {
     }
 
     // Available from Android 14 (API 34) on devices that report it
-    private fun readStateOfHealth(): Int {
+    private fun readStateOfHealth(batch: ReadBatch): Int {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return -1
         // Hidden constant BATTERY_PROPERTY_STATE_OF_HEALTH (value 10) is not exposed in public SDK stubs
-        val value = try { manager.getIntProperty(10) } catch (e: Exception) { -1 }
+        val value = batch.trace(
+            call = "BatteryManager.getIntProperty(STATE_OF_HEALTH = 10)",
+            fallback = -1,
+            noData = { it !in 1..100 },
+            show = { "$it %" }
+        ) { manager.getIntProperty(10) }
         return if (value in 1..100) value else -1
     }
 
     // Remaining charge in microamp-hours, converted to mAh
-    private fun readChargeCounterMah(): Int {
-        val value = manager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER)
+    private fun readChargeCounterMah(batch: ReadBatch): Int {
+        val value = batch.trace(
+            call = "BatteryManager.getIntProperty(BATTERY_PROPERTY_CHARGE_COUNTER)",
+            fallback = -1,
+            noData = { it <= 0 },
+            show = { "$it µAh" }
+        ) { manager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER) }
         return if (value > 0) value / 1000 else -1
     }
 
     // Available from Android 9 (API 28), only meaningful while charging
-    private fun readChargeTimeRemainingMin(charging: Boolean): Int {
+    private fun readChargeTimeRemainingMin(charging: Boolean, batch: ReadBatch): Int {
         if (!charging || Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return -1
-        val millis = manager.computeChargeTimeRemaining()
+        val millis = batch.trace(
+            call = "BatteryManager.computeChargeTimeRemaining()",
+            fallback = -1L,
+            noData = { it <= 0L },
+            show = { "$it ms" }
+        ) { manager.computeChargeTimeRemaining() }
         return if (millis > 0) (millis / 60_000L).toInt() else -1
+    }
+
+    // Raw extras of the sticky battery broadcast, shown in the data log
+    private fun describeIntent(intent: Intent?): String {
+        if (intent == null) return "null (no sticky broadcast)"
+        return "level=${intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)} " +
+            "scale=${intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100)} " +
+            "status=${intent.getIntExtra(BatteryManager.EXTRA_STATUS, BatteryManager.BATTERY_STATUS_UNKNOWN)} " +
+            "voltage=${intent.getIntExtra(BatteryManager.EXTRA_VOLTAGE, 0)} " +
+            "temp=${intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0)} " +
+            "health=${intent.getIntExtra(BatteryManager.EXTRA_HEALTH, 0)} " +
+            "plugged=${intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)} " +
+            "tech=${intent.getStringExtra(BatteryManager.EXTRA_TECHNOLOGY).orEmpty()} " +
+            "cycles=${intent.getIntExtra(BatteryManager.EXTRA_CYCLE_COUNT, -1)}"
     }
 
     // Values of 10000 or more are treated as microamps, smaller values as milliamps
