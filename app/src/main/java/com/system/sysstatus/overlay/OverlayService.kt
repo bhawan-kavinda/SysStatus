@@ -8,6 +8,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
 import android.content.res.Configuration
 import android.graphics.PixelFormat
@@ -26,6 +27,8 @@ import android.view.WindowManager
 import android.widget.FrameLayout
 import android.view.animation.DecelerateInterpolator
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
@@ -70,6 +73,13 @@ class OverlayService : Service() {
 
     private val state = mutableStateOf(FloatState())
     private var faded by mutableStateOf(false)
+    private var iconIdx by mutableIntStateOf(0)
+    private var userAlpha by mutableFloatStateOf(1f)
+
+    // Applies the Settings screen changes to the running icon (kept as a field: prefs hold it weakly)
+    private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        main.post { onPrefChanged(key) }
+    }
 
     private var bubble: View? = null
     @Volatile private var panel: ComposeView? = null
@@ -126,6 +136,7 @@ class OverlayService : Service() {
         main.removeCallbacksAndMessages(null)
         snapAnim?.cancel()
         closePanel()
+        FloatingPrefs.unregister(this, prefListener)
         bubble?.let { runCatching { wm.removeView(it) } }
         bubble = null
         owner.destroy()
@@ -136,11 +147,18 @@ class OverlayService : Service() {
 
     private fun addBubble() {
         val metrics = resources.displayMetrics
-        val size = dp(BUBBLE_DP)
+        val size = dp(FloatingPrefs.size(this))
+        iconIdx = FloatingPrefs.icon(this)
+        userAlpha = FloatingPrefs.alpha(this)
         val right = FloatingPrefs.savedRight(this)
         bubbleLp = overlayParams(size, size).apply {
             gravity = Gravity.TOP or Gravity.START
-            x = if (right) metrics.widthPixels - size else 0
+            x = if (FloatingPrefs.snap(this@OverlayService)) {
+                if (right) metrics.widthPixels - size else 0
+            } else {
+                (FloatingPrefs.savedX(this@OverlayService) * (metrics.widthPixels - size)).toInt()
+                    .coerceIn(0, metrics.widthPixels - size)
+            }
             y = (FloatingPrefs.savedY(this@OverlayService) * metrics.heightPixels).toInt()
                 .coerceIn(0, metrics.heightPixels - size)
         }
@@ -152,17 +170,34 @@ class OverlayService : Service() {
         )
         // ComposeView is final, so it sits inside a FrameLayout that handles the touches
         val compose = ComposeView(this)
-        compose.setContent { SysThemeBare { FloatingBubble(state.value, faded) } }
+        compose.setContent { SysThemeBare { FloatingBubble(state.value, faded, iconIdx, userAlpha) } }
         view.bindOwner()
         view.addView(compose, FrameLayout.LayoutParams(MATCH, MATCH))
         wm.addView(view, bubbleLp)
         bubble = view
+        FloatingPrefs.register(this, prefListener)
         scheduleFade()
+    }
+
+    private fun onPrefChanged(key: String?) {
+        if (!started || bubble == null) return
+        when (key) {
+            FloatingPrefs.KEY_ICON -> iconIdx = FloatingPrefs.icon(this)
+            FloatingPrefs.KEY_ALPHA -> userAlpha = FloatingPrefs.alpha(this)
+            FloatingPrefs.KEY_SNAP -> if (FloatingPrefs.snap(this)) snapToEdge(animate = true)
+            FloatingPrefs.KEY_SIZE -> {
+                closePanel()
+                val size = dp(FloatingPrefs.size(this))
+                bubbleLp.width = size
+                bubbleLp.height = size
+                snapToEdge(animate = false)
+            }
+        }
     }
 
     private fun moveBubble(dx: Int, dy: Int) {
         val m = resources.displayMetrics
-        val size = dp(BUBBLE_DP)
+        val size = bubbleLp.width
         bubbleLp.x = (bubbleLp.x + dx).coerceIn(0, m.widthPixels - size)
         bubbleLp.y = (bubbleLp.y + dy).coerceIn(0, m.heightPixels - size)
         bubble?.let { wm.updateViewLayout(it, bubbleLp) }
@@ -170,14 +205,17 @@ class OverlayService : Service() {
 
     private fun snapToEdge(animate: Boolean) {
         val m = resources.displayMetrics
-        val size = dp(BUBBLE_DP)
+        val size = bubbleLp.width
+        val maxX = (m.widthPixels - size).coerceAtLeast(1)
+        val snap = FloatingPrefs.snap(this)
         val right = bubbleLp.x + size / 2 > m.widthPixels / 2
-        val targetX = if (right) m.widthPixels - size else 0
+        // With snap off the icon stays where it was dropped
+        val targetX = if (snap) (if (right) m.widthPixels - size else 0) else bubbleLp.x.coerceIn(0, maxX)
         bubbleLp.y = bubbleLp.y.coerceIn(0, m.heightPixels - size)
-        FloatingPrefs.savePosition(this, right, bubbleLp.y.toFloat() / m.heightPixels)
+        FloatingPrefs.savePosition(this, right, bubbleLp.y.toFloat() / m.heightPixels, targetX.toFloat() / maxX)
 
         snapAnim?.cancel()
-        if (!animate) {
+        if (!animate || !snap) {
             bubbleLp.x = targetX
             bubble?.let { wm.updateViewLayout(it, bubbleLp) }
         } else {
@@ -210,7 +248,7 @@ class OverlayService : Service() {
 
     private fun openPanel() {
         val m = resources.displayMetrics
-        val size = dp(BUBBLE_DP)
+        val size = bubbleLp.width
         val gap = dp(10)
         val lp = overlayParams(min(dp(320), m.widthPixels - dp(24)), WindowManager.LayoutParams.WRAP_CONTENT)
         // Open below the icon when it is in the top half, above it otherwise
@@ -387,7 +425,6 @@ class OverlayService : Service() {
         const val ACTION_STOP = "com.podda.sysstatus.action.STOP_FLOATING"
         private const val CHANNEL_ID = "floating_window"
         private const val NOTIFICATION_ID = 42
-        private const val BUBBLE_DP = 56
         private const val HISTORY = 40
         private const val MATCH = FrameLayout.LayoutParams.MATCH_PARENT
 

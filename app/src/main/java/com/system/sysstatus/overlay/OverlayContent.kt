@@ -42,7 +42,6 @@ import com.system.sysstatus.data.CpuStats
 import com.system.sysstatus.data.MemoryStats
 import com.system.sysstatus.ui.Accent
 import com.system.sysstatus.ui.AppLogo
-import com.system.sysstatus.ui.AppLogoLayers
 import com.system.sysstatus.ui.Ic
 import com.system.sysstatus.ui.Sparkline
 import com.system.sysstatus.ui.SysIcon
@@ -62,9 +61,9 @@ data class FloatState(
 
 private val Low = Color(0xFFE5484D)
 
-// The floating icon: the app logo with a ring showing the battery level
+// The floating icon: the chosen icon with a ring showing the battery level
 @Composable
-fun FloatingBubble(state: FloatState, faded: Boolean) {
+fun FloatingBubble(state: FloatState, faded: Boolean, icon: Int = 0, baseAlpha: Float = 1f) {
     val b = state.battery
     val ring = when {
         !b.available -> Accent.Blue
@@ -72,7 +71,7 @@ fun FloatingBubble(state: FloatState, faded: Boolean) {
         b.levelPercent > 20 -> Accent.Orange
         else -> Low
     }
-    val alpha by animateFloatAsState(if (faded) 0.65f else 1f, label = "bubbleAlpha")
+    val alpha by animateFloatAsState(if (faded) baseAlpha * 0.65f else baseAlpha, label = "bubbleAlpha")
 
     Box(
         Modifier
@@ -81,7 +80,7 @@ fun FloatingBubble(state: FloatState, faded: Boolean) {
             .clip(CircleShape),
         contentAlignment = Alignment.Center
     ) {
-        AppLogoLayers(Modifier.fillMaxSize())
+        FloatIcon(icon, Modifier.fillMaxSize())
         Canvas(Modifier.fillMaxSize()) {
             val stroke = 3.dp.toPx()
             val inset = stroke / 2
@@ -91,6 +90,19 @@ fun FloatingBubble(state: FloatState, faded: Boolean) {
                 drawArc(ring, -90f, 360f * b.levelPercent / 100f, false, Offset(inset, inset), arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
             }
         }
+    }
+}
+
+// Preview used on the Settings screen: just the icon at the chosen transparency
+@Composable
+fun FloatingBubble(icon: Int, alpha: Float) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .alpha(alpha)
+            .clip(CircleShape)
+    ) {
+        FloatIcon(icon, Modifier.fillMaxSize())
     }
 }
 

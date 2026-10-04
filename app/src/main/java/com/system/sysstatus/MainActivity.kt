@@ -35,6 +35,7 @@ import com.system.sysstatus.ui.LoadingView
 import com.system.sysstatus.ui.LogScreen
 import com.system.sysstatus.ui.MemoryScreen
 import com.system.sysstatus.ui.Screen
+import com.system.sysstatus.ui.SettingsScreen
 import com.system.sysstatus.ui.SysNavBar
 import com.system.sysstatus.ui.SysTheme
 
@@ -89,6 +90,10 @@ class MainActivity : ComponentActivity() {
                                     Screen.Battery -> BatteryScreen(state)
                                     Screen.Memory -> MemoryScreen(state)
                                     Screen.Cpu -> CpuScreen(state)
+                                    Screen.Settings -> SettingsScreen(
+                                        floatingOn = floatingOn,
+                                        onFloating = ::toggleFloating
+                                    )
                                     Screen.Log -> Unit
                                 }
                             }
