@@ -1,4 +1,4 @@
-package com.podda.sysstatus.ui
+package com.system.sysstatus.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -18,7 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.podda.sysstatus.data.UiState
+import com.system.sysstatus.data.UiState
 
 private const val NOT_REPORTED = "Not reported"
 

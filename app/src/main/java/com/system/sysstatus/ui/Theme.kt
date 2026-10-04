@@ -1,4 +1,4 @@
-package com.podda.sysstatus.ui
+package com.system.sysstatus.ui
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize

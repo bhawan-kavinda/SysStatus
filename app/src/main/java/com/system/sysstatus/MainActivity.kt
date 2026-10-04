@@ -1,4 +1,4 @@
-package com.podda.sysstatus
+package com.system.sysstatus
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -11,12 +11,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.podda.sysstatus.data.StatsViewModel
-import com.podda.sysstatus.ui.BatteryScreen
-import com.podda.sysstatus.ui.HomeScreen
-import com.podda.sysstatus.ui.MemoryScreen
-import com.podda.sysstatus.ui.Screen
-import com.podda.sysstatus.ui.SysTheme
+import com.system.sysstatus.data.StatsViewModel
+import com.system.sysstatus.ui.BatteryScreen
+import com.system.sysstatus.ui.HomeScreen
+import com.system.sysstatus.ui.MemoryScreen
+import com.system.sysstatus.ui.Screen
+import com.system.sysstatus.ui.SysTheme
 
 class MainActivity : ComponentActivity() {
 

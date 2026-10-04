@@ -1,4 +1,4 @@
-package com.podda.sysstatus.ui
+package com.system.sysstatus.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background

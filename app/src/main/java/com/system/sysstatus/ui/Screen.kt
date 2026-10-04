@@ -1,4 +1,4 @@
-package com.podda.sysstatus.ui
+package com.system.sysstatus.ui
 
 enum class Screen {
     Home,

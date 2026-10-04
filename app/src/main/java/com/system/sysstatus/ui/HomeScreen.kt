@@ -1,4 +1,4 @@
-package com.podda.sysstatus.ui
+package com.system.sysstatus.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,8 +27,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.podda.sysstatus.data.BatteryStats
-import com.podda.sysstatus.data.UiState
+import com.system.sysstatus.data.BatteryStats
+import com.system.sysstatus.data.UiState
 import kotlin.math.abs
 
 @Composable

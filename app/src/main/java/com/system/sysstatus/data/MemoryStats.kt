@@ -1,4 +1,4 @@
-package com.podda.sysstatus.data
+package com.system.sysstatus.data
 
 import android.app.ActivityManager
 import android.content.Context

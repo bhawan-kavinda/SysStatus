@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.podda.sysstatus"
+    namespace = "com.system.sysstatus"
     compileSdk = 35
 
     defaultConfig {
