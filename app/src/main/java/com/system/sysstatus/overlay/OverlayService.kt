@@ -20,8 +20,10 @@ import android.os.PowerManager
 import android.provider.Settings
 import android.view.Gravity
 import android.view.MotionEvent
+import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
+import android.widget.FrameLayout
 import android.view.animation.DecelerateInterpolator
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -69,7 +71,7 @@ class OverlayService : Service() {
     private val state = mutableStateOf(FloatState())
     private var faded by mutableStateOf(false)
 
-    private var bubble: ComposeView? = null
+    private var bubble: View? = null
     @Volatile private var panel: ComposeView? = null
     private lateinit var bubbleLp: WindowManager.LayoutParams
     private var snapAnim: ValueAnimator? = null
@@ -148,8 +150,11 @@ class OverlayService : Service() {
             onDrag = ::moveBubble,
             onDragEnd = { snapToEdge(animate = true) }
         )
+        // ComposeView is final, so it sits inside a FrameLayout that handles the touches
+        val compose = ComposeView(this)
+        compose.setContent { SysThemeBare { FloatingBubble(state.value, faded) } }
         view.bindOwner()
-        view.setContent { SysThemeBare { FloatingBubble(state.value, faded) } }
+        view.addView(compose, FrameLayout.LayoutParams(MATCH, MATCH))
         wm.addView(view, bubbleLp)
         bubble = view
         scheduleFade()
@@ -287,7 +292,7 @@ class OverlayService : Service() {
         PixelFormat.TRANSLUCENT
     )
 
-    private fun ComposeView.bindOwner() {
+    private fun View.bindOwner() {
         setViewTreeLifecycleOwner(owner)
         setViewTreeViewModelStoreOwner(owner)
         setViewTreeSavedStateRegistryOwner(owner)
@@ -327,7 +332,7 @@ class OverlayService : Service() {
         private val onDragStart: () -> Unit,
         private val onDrag: (Int, Int) -> Unit,
         private val onDragEnd: () -> Unit
-    ) : ComposeView(this@OverlayService) {
+    ) : FrameLayout(this@OverlayService) {
         private val slop = ViewConfiguration.get(context).scaledTouchSlop
         private var downX = 0f
         private var downY = 0f
@@ -384,6 +389,7 @@ class OverlayService : Service() {
         private const val NOTIFICATION_ID = 42
         private const val BUBBLE_DP = 56
         private const val HISTORY = 40
+        private const val MATCH = FrameLayout.LayoutParams.MATCH_PARENT
 
         @Volatile var running = false
             private set
