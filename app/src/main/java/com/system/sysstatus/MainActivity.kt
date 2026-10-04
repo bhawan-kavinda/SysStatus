@@ -6,19 +6,26 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.system.sysstatus.data.RequestLog
 import com.system.sysstatus.data.StatsViewModel
 import com.system.sysstatus.ui.BatteryScreen
+import com.system.sysstatus.ui.CpuScreen
 import com.system.sysstatus.ui.HomeScreen
+import com.system.sysstatus.ui.LoadingView
 import com.system.sysstatus.ui.LogScreen
 import com.system.sysstatus.ui.MemoryScreen
 import com.system.sysstatus.ui.Screen
+import com.system.sysstatus.ui.SysNavBar
 import com.system.sysstatus.ui.SysTheme
 
 class MainActivity : ComponentActivity() {
@@ -40,11 +47,26 @@ class MainActivity : ComponentActivity() {
                     screen = Screen.Home
                 }
 
-                when (screen) {
-                    Screen.Home -> HomeScreen(state, onOpen = { screen = it })
-                    Screen.Battery -> BatteryScreen(state, onBack = { screen = Screen.Home })
-                    Screen.Memory -> MemoryScreen(state, onBack = { screen = Screen.Home })
-                    Screen.Log -> LogScreen(onBack = { screen = Screen.Home })
+                if (screen == Screen.Log) {
+                    // The terminal keeps its own full-screen layout and [back] button
+                    LogScreen(onBack = { screen = Screen.Home })
+                } else {
+                    Column(Modifier.fillMaxSize()) {
+                        Box(Modifier.weight(1f)) {
+                            if (!state.loaded) {
+                                LoadingView()
+                            } else {
+                                when (screen) {
+                                    Screen.Home -> HomeScreen(state, onOpen = { screen = it })
+                                    Screen.Battery -> BatteryScreen(state)
+                                    Screen.Memory -> MemoryScreen(state)
+                                    Screen.Cpu -> CpuScreen(state)
+                                    Screen.Log -> Unit
+                                }
+                            }
+                        }
+                        SysNavBar(current = screen, onSelect = { screen = it })
+                    }
                 }
             }
         }

@@ -31,8 +31,14 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
+// Shown in place of any value the system did not provide
+internal const val NO_DATA = "No data"
+// Shown when the file or API exists but this app is not allowed to read it
+internal const val NO_ACCESS = "No access"
 
 @Composable
 fun Sparkline(
@@ -139,15 +145,72 @@ fun BatteryRing(
 }
 
 @Composable
+fun IconChip(icon: Ic, accent: Color, modifier: Modifier = Modifier, boxSize: Dp = 32.dp) {
+    Box(
+        modifier
+            .size(boxSize)
+            .clip(RoundedCornerShape(10.dp))
+            .background(accent.copy(alpha = 0.17f)),
+        contentAlignment = Alignment.Center
+    ) {
+        SysIcon(icon, accent, boxSize * 0.56f)
+    }
+}
+
+@Composable
+fun NoDataText(
+    text: String = NO_DATA,
+    size: TextUnit = 15.sp,
+    modifier: Modifier = Modifier
+) {
+    Text(
+        text = text,
+        fontSize = size,
+        fontWeight = FontWeight.Medium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+        modifier = modifier
+    )
+}
+
+@Composable
+fun StatusPill(text: String, icon: Ic, tint: Color) {
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .background(tint.copy(alpha = 0.18f))
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        SysIcon(icon, tint, 13.dp)
+        Spacer(Modifier.width(5.dp))
+        Text(text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = tint)
+    }
+}
+
+@Composable
+fun LoadingView() {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(
+            "Reading system data…",
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+// A value is null when the system did not report it; the tile then says so instead of drawing a number
+@Composable
 fun StatTile(
+    icon: Ic,
     title: String,
-    value: String,
+    value: String?,
     unit: String,
     accent: Color,
     history: List<Float>,
     minValue: Float,
     maxValue: Float,
     modifier: Modifier = Modifier,
+    emptyText: String = NO_DATA,
     onClick: (() -> Unit)? = null
 ) {
     val colors = MaterialTheme.colorScheme
@@ -163,20 +226,7 @@ fun StatTile(
             .padding(14.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier
-                    .size(32.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(accent.copy(alpha = 0.18f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    Modifier
-                        .size(12.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(accent)
-                )
-            }
+            IconChip(icon, accent)
             Spacer(Modifier.width(10.dp))
             Text(
                 text = title,
@@ -186,31 +236,43 @@ fun StatTile(
             )
         }
         Spacer(Modifier.height(12.dp))
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text(
-                text = value,
-                fontSize = 26.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = colors.onSurface
-            )
-            if (unit.isNotEmpty()) {
-                Text(
-                    text = " $unit",
-                    fontSize = 13.sp,
-                    color = colors.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
+        Box(Modifier.height(36.dp), contentAlignment = Alignment.CenterStart) {
+            if (value == null) {
+                NoDataText(emptyText, 17.sp)
+            } else {
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = value,
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colors.onSurface
+                    )
+                    if (unit.isNotEmpty()) {
+                        Text(
+                            text = " $unit",
+                            fontSize = 13.sp,
+                            color = colors.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                    }
+                }
             }
         }
         Spacer(Modifier.height(8.dp))
-        Sparkline(
-            values = history,
-            color = accent,
-            minValue = minValue,
-            maxValue = maxValue,
-            modifier = Modifier
+        Box(
+            Modifier
                 .fillMaxWidth()
                 .height(40.dp)
-        )
+        ) {
+            if (value != null && history.size >= 2) {
+                Sparkline(
+                    values = history,
+                    color = accent,
+                    minValue = minValue,
+                    maxValue = maxValue,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
     }
 }

@@ -8,6 +8,8 @@ import android.os.Build
 import kotlin.math.abs
 
 data class BatteryStats(
+    // False when the system returned no battery broadcast at all
+    val available: Boolean = false,
     val levelPercent: Int = 0,
     val isCharging: Boolean = false,
     val statusText: String = "Unknown",
@@ -85,6 +87,7 @@ class BatteryCollector(context: Context) {
         }
 
         return BatteryStats(
+            available = true,
             levelPercent = percent,
             isCharging = charging,
             statusText = statusLabel(status),

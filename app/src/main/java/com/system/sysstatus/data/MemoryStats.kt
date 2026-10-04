@@ -5,6 +5,8 @@ import android.content.Context
 import java.io.File
 
 data class MemoryStats(
+    // True only when the full /proc/meminfo data was read (cached, buffers and swap are known)
+    val detailAvailable: Boolean = false,
     val totalMb: Long = 0,
     val availableMb: Long = 0,
     val cachedMb: Long = 0,
@@ -43,6 +45,7 @@ class MemoryCollector(context: Context) {
         if (fields.isEmpty() || !fields.containsKey("MemTotal")) return readFallback(batch)
 
         return MemoryStats(
+            detailAvailable = true,
             totalMb = kbToMb(fields["MemTotal"]),
             availableMb = kbToMb(fields["MemAvailable"] ?: fields["MemFree"]),
             cachedMb = kbToMb(fields["Cached"]),

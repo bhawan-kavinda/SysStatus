@@ -4,5 +4,6 @@ enum class Screen {
     Home,
     Battery,
     Memory,
+    Cpu,
     Log
 }
