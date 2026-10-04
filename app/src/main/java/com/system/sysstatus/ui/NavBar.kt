@@ -26,7 +26,8 @@ private val tabs = listOf(
     Tab(Screen.Battery, Ic.Battery, "Battery"),
     Tab(Screen.Memory, Ic.Ram, "Memory"),
     Tab(Screen.Cpu, Ic.Cpu, "CPU"),
-    Tab(Screen.Log, Ic.Terminal, "Log")
+    Tab(Screen.Log, Ic.Terminal, "Log"),
+    Tab(Screen.Settings, Ic.Tune, "Settings")
 )
 
 @Composable

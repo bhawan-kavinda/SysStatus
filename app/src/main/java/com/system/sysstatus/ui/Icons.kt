@@ -32,7 +32,8 @@ enum class Ic(val path: String) {
     Cycle("M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"),
     Chevron("M9 6l6 6-6 6"),
     Chip("M7 4h10a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3z M9 12h6M12 9v6"),
-    Lock("M7 11h10a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1z M8 11V8a4 4 0 0 1 8 0v3")
+    Lock("M7 11h10a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1z M8 11V8a4 4 0 0 1 8 0v3"),
+    Tune("M4 7h8M18 7h2M4 17h2M12 17h8M15 7m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M9 17m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0")
 }
 
 @Composable
