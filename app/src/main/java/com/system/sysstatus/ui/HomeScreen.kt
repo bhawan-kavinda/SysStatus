@@ -38,7 +38,12 @@ private fun deviceLine(): String {
 }
 
 @Composable
-fun HomeScreen(state: UiState, onOpen: (Screen) -> Unit) {
+fun HomeScreen(
+    state: UiState,
+    onOpen: (Screen) -> Unit,
+    floatingOn: Boolean = false,
+    onFloating: () -> Unit = {}
+) {
     val colors = MaterialTheme.colorScheme
     val battery = state.battery
     val memory = state.memory
@@ -152,6 +157,14 @@ fun HomeScreen(state: UiState, onOpen: (Screen) -> Unit) {
 
         Spacer(Modifier.height(12.dp))
         CpuCard(state.cpu, onClick = { onOpen(Screen.Cpu) })
+        Spacer(Modifier.height(12.dp))
+        LinkCard(
+            icon = Ic.Pulse,
+            accent = Accent.Green,
+            title = "Floating window",
+            subtitle = if (floatingOn) "On · tap to turn off" else "Show battery, RAM and CPU over other apps",
+            onClick = onFloating
+        )
         Spacer(Modifier.height(12.dp))
         LinkCard(
             icon = Ic.Terminal,
