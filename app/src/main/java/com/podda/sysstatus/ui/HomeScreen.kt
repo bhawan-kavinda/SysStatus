@@ -1,8 +1,10 @@
 package com.podda.sysstatus.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,9 +47,14 @@ fun HomeScreen(state: UiState, onOpen: (Screen) -> Unit) {
             .padding(horizontal = 16.dp, vertical = 12.dp)
             .navigationBarsPadding()
     ) {
-        Text("System", fontSize = 28.sp, fontWeight = FontWeight.Medium)
-        Text("Live device status", fontSize = 13.sp, color = colors.onSurfaceVariant)
-        Spacer(Modifier.height(16.dp))
+        Text(
+            "System",
+            fontSize = 32.sp,
+            fontWeight = FontWeight.Bold,
+            color = colors.onBackground
+        )
+        Text("Live device status", fontSize = 14.sp, color = colors.onSurfaceVariant)
+        Spacer(Modifier.height(18.dp))
 
         BatteryCard(battery, onClick = { onOpen(Screen.Battery) })
         Spacer(Modifier.height(12.dp))
@@ -116,12 +124,12 @@ fun HomeScreen(state: UiState, onOpen: (Screen) -> Unit) {
 @Composable
 private fun BatteryCard(battery: BatteryStats, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(26.dp)
 
-    val headline = if (battery.currentAvailable) {
-        "${battery.statusText} · ${f1(abs(battery.powerW))} W"
-    } else {
-        battery.statusText
-    }
+    // Low battery (not charging) switches the card to the warning colour
+    val tint = if (!battery.isCharging && battery.levelPercent <= 20) Accent.Orange else Accent.Green
+
+    val headline = if (battery.currentAvailable) "${f1(abs(battery.powerW))} W" else "—"
     val electrical = if (battery.currentAvailable) {
         "${f2(battery.voltageV)} V · ${battery.currentMa} mA"
     } else {
@@ -131,17 +139,36 @@ private fun BatteryCard(battery: BatteryStats, onClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
+            .clip(shape)
             .background(colors.surface)
+            .background(Brush.linearGradient(listOf(tint.copy(alpha = 0.20f), colors.surface)))
+            .border(1.dp, colors.outlineVariant, shape)
             .clickable(onClick = onClick)
-            .padding(16.dp),
+            .padding(18.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(18.dp)
     ) {
-        BatteryRing(percent = battery.levelPercent, color = Accent.Green)
-        Column {
-            Text("Battery", fontSize = 13.sp, color = colors.onSurfaceVariant)
-            Text(headline, fontSize = 17.sp, fontWeight = FontWeight.Medium)
+        BatteryRing(percent = battery.levelPercent, color = tint, diameter = 96.dp)
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(tint.copy(alpha = 0.20f))
+                    .padding(horizontal = 10.dp, vertical = 3.dp)
+            ) {
+                Text(
+                    battery.statusText,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = tint
+                )
+            }
+            Text(
+                headline,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = colors.onSurface
+            )
             Text(electrical, fontSize = 13.sp, color = colors.onSurfaceVariant)
             Text(
                 "${f1(battery.temperatureC)} °C · ${battery.health}",
