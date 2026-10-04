@@ -94,7 +94,8 @@ class BatteryCollector(context: Context) {
     // Available from Android 14 (API 34) on devices that report it
     private fun readStateOfHealth(): Int {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return -1
-        val value = manager.getIntProperty(BatteryManager.BATTERY_PROPERTY_STATE_OF_HEALTH)
+        // Hidden constant BATTERY_PROPERTY_STATE_OF_HEALTH (value 10) is not exposed in public SDK stubs
+        val value = try { manager.getIntProperty(10) } catch (e: Exception) { -1 }
         return if (value in 1..100) value else -1
     }
 
