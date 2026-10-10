@@ -1,7 +1,0 @@
-name: Phone test
-on: workflow_dispatch
-jobs:
-  hello:
-    runs-on: self-hosted
-    steps:
-      - run: echo "Hello from phone" && uname -m && free -m
